@@ -1,4 +1,9 @@
 
+## 4.7.3+fiz.1
+- fix: `ReceiptDetails.authorizationResponseCode` made nullable (Stripe Android SDK can return null) — Fizco fork only.
+
+## 4.7.3
+- feat: bumped android and ios sdk version to `4.7.3`
 
 ## 4.6.3
 - fix: deleted a trailing comma that was causing a compilation error on  Xcode versions priors to 16.3
