@@ -1,4 +1,11 @@
-# mek_stripe_terminal
+# mek_stripe_terminal (Fizco fork)
+
+> Fork of [BreX900/mek-packages](https://github.com/BreX900/mek-packages/tree/main/stripe_terminal) maintained by Fizco.
+>
+> **Differences from upstream**:
+> - `ReceiptDetails.authorizationResponseCode` is nullable (Stripe Android SDK can return null; upstream Pigeon schema declared it non-null and crashed during `confirmPaymentIntent`). Upstream PR: [#147](https://github.com/BreX900/mek-packages/pull/147).
+>
+> **Sync workflow**: upstream is tracked as a remote and merged periodically. Trunk branch is `main`.
 
 A flutter plugin to scan stripe readers and connect to the them and get the payment methods.
 
