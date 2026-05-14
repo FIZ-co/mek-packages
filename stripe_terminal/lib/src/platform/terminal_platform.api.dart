@@ -766,7 +766,7 @@ ReceiptDetails _$deserializeReceiptDetails(List<Object?> serialized) => ReceiptD
     applicationCryptogram: serialized[1] as String?,
     applicationPreferredName: serialized[2] as String?,
     authorizationCode: serialized[3] as String?,
-    authorizationResponseCode: serialized[4] as String,
+    authorizationResponseCode: serialized[4] as String?,
     dedicatedFileName: serialized[5] as String?,
     terminalVerificationResults: serialized[6] as String?,
     transactionStatusInformation: serialized[7] as String?);
