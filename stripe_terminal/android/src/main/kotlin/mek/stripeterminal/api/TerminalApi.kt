@@ -259,8 +259,19 @@ interface TerminalPlatformApi {
                     result.success(res.ordinal)
                 }
                 "supportsReadersOfType" -> {
-                    val res = onSupportsReadersOfType((args[0] as Int?)?.let { DeviceTypeApi.values()[it] }, (args[1] as List<Any?>).let { DiscoveryConfigurationApi.deserialize(it) })
-                    result.success(res)
+                    // Fizco fork: run off the main thread. The Stripe SDK's Tap to Pay
+                    // preflight (PreFlightChecks.isHardwareBackedKeystore) uses runBlocking
+                    // internally and can park the calling thread long enough to ANR.
+                    val deviceType = (args[0] as Int?)?.let { DeviceTypeApi.values()[it] }
+                    val discoveryConfiguration = (args[1] as List<Any?>).let { DiscoveryConfigurationApi.deserialize(it) }
+                    coroutineScope.launch(Dispatchers.Default) {
+                        try {
+                            val res = onSupportsReadersOfType(deviceType, discoveryConfiguration)
+                            withContext(Dispatchers.Main) { result.success(res) }
+                        } catch (e: PlatformError) {
+                            withContext(Dispatchers.Main) { result.error(e.code, e.message, e.details) }
+                        }
+                    }
                 }
                 "connectReader" -> {
                     val res = Result<ReaderApi>(result) { it.serialize() }
