@@ -6,6 +6,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -270,6 +271,13 @@ interface TerminalPlatformApi {
                             withContext(Dispatchers.Main) { result.success(res) }
                         } catch (e: PlatformError) {
                             withContext(Dispatchers.Main) { result.error(e.code, e.message, e.details) }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Throwable) {
+                            // Mirror Flutter's MethodChannel behavior for uncaught handler
+                            // exceptions: report as an error reply instead of letting the
+                            // exception escape the coroutine and crash the process.
+                            withContext(Dispatchers.Main) { result.error("error", e.message, null) }
                         }
                     }
                 }
