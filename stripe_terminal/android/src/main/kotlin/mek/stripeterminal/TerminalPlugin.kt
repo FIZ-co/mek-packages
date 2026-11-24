@@ -10,19 +10,19 @@ import com.stripe.stripeterminal.external.callable.PaymentIntentCallback
 import com.stripe.stripeterminal.external.callable.ReaderCallback
 import com.stripe.stripeterminal.external.callable.RefundCallback
 import com.stripe.stripeterminal.external.callable.SetupIntentCallback
-import com.stripe.stripeterminal.external.models.AllowRedisplay
-import com.stripe.stripeterminal.external.models.CollectConfiguration
+import com.stripe.stripeterminal.external.models.CollectPaymentIntentConfiguration
+import com.stripe.stripeterminal.external.models.CollectRefundConfiguration
+import com.stripe.stripeterminal.external.models.CollectSetupIntentConfiguration
+import com.stripe.stripeterminal.external.models.CustomerCancellation
 import com.stripe.stripeterminal.external.models.DeviceType
 import com.stripe.stripeterminal.external.models.ListLocationsParameters
 import com.stripe.stripeterminal.external.models.Location
 import com.stripe.stripeterminal.external.models.PaymentIntent
 import com.stripe.stripeterminal.external.models.Reader
 import com.stripe.stripeterminal.external.models.Refund
-import com.stripe.stripeterminal.external.models.RefundConfiguration
 import com.stripe.stripeterminal.external.models.RefundParameters
 import com.stripe.stripeterminal.external.models.SetupIntent
 import com.stripe.stripeterminal.external.models.SetupIntentCancellationParameters
-import com.stripe.stripeterminal.external.models.SetupIntentConfiguration
 import com.stripe.stripeterminal.external.models.SetupIntentParameters
 import com.stripe.stripeterminal.external.models.TerminalException
 import com.stripe.stripeterminal.log.LogLevel
@@ -40,6 +40,7 @@ import mek.stripeterminal.api.LocationApi
 import mek.stripeterminal.api.PaymentIntentApi
 import mek.stripeterminal.api.PaymentIntentParametersApi
 import mek.stripeterminal.api.PaymentStatusApi
+import mek.stripeterminal.api.PlatformError
 import mek.stripeterminal.api.ReaderApi
 import mek.stripeterminal.api.RefundApi
 import mek.stripeterminal.api.Result
@@ -58,6 +59,7 @@ import mek.stripeterminal.plugin.DiscoverReadersSubject
 import mek.stripeterminal.plugin.ReaderDelegatePlugin
 import mek.stripeterminal.plugin.TerminalDelegatePlugin
 import mek.stripeterminal.plugin.TerminalErrorHandler
+import kotlin.concurrent.thread
 
 class TerminalPlugin : FlutterPlugin, ActivityAware {
     private lateinit var platform: TerminalPlatformPlugin
@@ -113,17 +115,40 @@ class TerminalPlatformPlugin(
         }
 
         val delegate = TerminalDelegatePlugin(handlers)
-        Terminal.initTerminal(
+        Terminal.init(
             applicationContext,
             if (shouldPrintLogs) LogLevel.VERBOSE else LogLevel.NONE,
             delegate,
-            delegate
+            delegate,
+            null
         )
     }
 
-    override fun onClearCachedCredentials() {
-        terminal.clearCachedCredentials();
+    override fun onClearCachedCredentials(result: Result<Unit>) {
+        if (terminal.connectedReader == null) {
+            clearCachedCredentials(result)
+            return
+        }
+
+        // The sdk rejects the request while a reader is connected
+        terminal.disconnectReader(
+            object : Callback {
+                override fun onFailure(e: TerminalException) = runOnMainThread { clearCachedCredentials(result) }
+
+                override fun onSuccess() = runOnMainThread { clearCachedCredentials(result) }
+            }
+        )
+    }
+
+    private fun clearCachedCredentials(result: Result<Unit>) {
+        val clearResult = terminal.clearCachedCredentials()
+        val error = clearResult.error
+        if (!clearResult.isSuccessful && error != null) {
+            result.error(error.toPlatformError())
+            return
+        }
         clean()
+        result.success(Unit)
     }
 
     // region Reader discovery, connection and updates
@@ -135,18 +160,36 @@ class TerminalPlatformPlugin(
     override fun onGetConnectionStatus(): ConnectionStatusApi = terminal.connectionStatus.toApi()
 
     override fun onSupportsReadersOfType(
+        result: Result<Boolean>,
         deviceType: DeviceTypeApi?,
         discoveryConfiguration: DiscoveryConfigurationApi
-    ): Boolean {
-        val hostDeviceType =
-            (if (deviceType != null) deviceType.toHost() else DeviceType.UNKNOWN) ?: return false
-        val hostDiscoveryConfiguration = discoveryConfiguration.toHost() ?: return false
-        val result =
-            terminal.supportsReadersOfType(
-                deviceType = hostDeviceType,
-                discoveryConfiguration = hostDiscoveryConfiguration
-            )
-        return result.isSupported
+    ) {
+        val hostDeviceType = if (deviceType != null) deviceType.toHost() else DeviceType.UNKNOWN
+        val hostDiscoveryConfiguration = discoveryConfiguration.toHost()
+        if (hostDeviceType == null || hostDiscoveryConfiguration == null) {
+            result.success(false)
+            return
+        }
+
+        // Fizco fork: run off the main thread. The Tap to Pay preflight of the sdk
+        // (PreFlightChecks.isHardwareBackedKeystore) blocks the calling thread long enough to ANR.
+        thread(name = "stripe-terminal-supports-readers") {
+            try {
+                val support =
+                    terminal.supportsReadersOfType(
+                        deviceType = hostDeviceType,
+                        discoveryConfiguration = hostDiscoveryConfiguration
+                    )
+                runOnMainThread { result.success(support.isSupported) }
+            } catch (e: Throwable) {
+                val error = if (e is TerminalException) {
+                    e.toPlatformError()
+                } else {
+                    PlatformError(code = "error", message = e.message)
+                }
+                runOnMainThread { result.error(error) }
+            }
+        }
     }
 
     override fun onConnectReader(result: Result<ReaderApi>, serialNumber: String, configuration: ConnectionConfigurationApi) {
@@ -270,13 +313,13 @@ class TerminalPlatformPlugin(
     ) {
         val paymentIntent = findPaymentIntent(paymentIntentId)
         val config =
-            CollectConfiguration.Builder()
+            CollectPaymentIntentConfiguration.Builder()
                 .setSurchargeNotice(surchargeNotice)
                 .setRequestDynamicCurrencyConversion(requestDynamicCurrencyConversion)
                 .skipTipping(skipTipping)
                 .setTippingConfiguration(tippingConfiguration?.toHost())
                 .updatePaymentIntent(shouldUpdatePaymentIntent)
-                .setEnableCustomerCancellation(customerCancellationEnabled)
+                .setCustomerCancellation(customerCancellationEnabled.toCustomerCancellation())
                 .setAllowRedisplay(allowRedisplay.toHost())
 
         cancelablesCollectPaymentMethod[operationId] =
@@ -306,7 +349,7 @@ class TerminalPlatformPlugin(
                 object : TerminalErrorHandler(result::error), Callback {
                     override fun onSuccess() = result.success(Unit)
                 }
-            )
+            ) ?: result.success(Unit)
     }
 
     private var confirmPaymentIntentCancelables = HashMap<Long, Cancelable>()
@@ -342,7 +385,7 @@ class TerminalPlatformPlugin(
             object : TerminalErrorHandler(result::error), Callback {
                 override fun onSuccess() = result.success(Unit)
             }
-        )
+        ) ?: result.success(Unit)
     }
 
     override fun onCancelPaymentIntent(result: Result<PaymentIntentApi>, paymentIntentId: String) {
@@ -409,8 +452,8 @@ class TerminalPlatformPlugin(
     ) {
         val setupIntent = findSetupIntent(setupIntentId)
         val config =
-            SetupIntentConfiguration.Builder()
-                .setEnableCustomerCancellation(customerCancellationEnabled)
+            CollectSetupIntentConfiguration.Builder()
+                .setCustomerCancellation(customerCancellationEnabled.toCustomerCancellation())
 
 
         cancelablesCollectSetupIntentPaymentMethod[operationId] =
@@ -440,7 +483,7 @@ class TerminalPlatformPlugin(
                 object : TerminalErrorHandler(result::error), Callback {
                     override fun onSuccess() = result.success(Unit)
                 }
-            )
+            ) ?: result.success(Unit)
     }
 
     private var confirmSetupIntentCancelables = HashMap<Long, Cancelable>()
@@ -467,7 +510,7 @@ class TerminalPlatformPlugin(
             object : TerminalErrorHandler(result::error), Callback {
                 override fun onSuccess() = result.success(Unit)
             }
-        )
+        ) ?: result.success(Unit)
     }
 
     override fun onCancelSetupIntent(result: Result<SetupIntentApi>, setupIntentId: String) {
@@ -500,22 +543,22 @@ class TerminalPlatformPlugin(
         customerCancellationEnabled: Boolean
     ) {
         val config =
-            RefundConfiguration.Builder().setEnableCustomerCancellation(customerCancellationEnabled)
+            CollectRefundConfiguration.Builder()
+                .setCustomerCancellation(customerCancellationEnabled.toCustomerCancellation())
 
         cancelablesCollectRefundPaymentMethod[operationId] =
             terminal.collectRefundPaymentMethod(
-                RefundParameters.Builder(
-                    chargeId = chargeId,
+                RefundParameters.ByChargeId(
+                    id = chargeId,
                     amount = amount,
                     currency = currency
                 )
-                    .let {
-                        metadata?.let(it::setMetadata)
-                        reverseTransfer?.let(it::setReverseTransfer)
-                        refundApplicationFee?.let(it::setRefundApplicationFee)
-                        it.build()
-                    },
-
+                    .also { builder ->
+                        metadata?.let { builder.metadata = it }
+                        reverseTransfer?.let { builder.reverseTransfer = it }
+                        refundApplicationFee?.let { builder.refundApplicationFee = it }
+                    }
+                    .build(),
                 config = config.build(),
                 callback =
                 object : TerminalErrorHandler(result::error), Callback {
@@ -539,7 +582,7 @@ class TerminalPlatformPlugin(
                 object : TerminalErrorHandler(result::error), Callback {
                     override fun onSuccess() = result.success(Unit)
                 }
-            )
+            ) ?: result.success(Unit)
     }
 
     private var confirmRefundCancelables = HashMap<Long, Cancelable>()
@@ -565,7 +608,7 @@ class TerminalPlatformPlugin(
             object : TerminalErrorHandler(result::error), Callback {
                 override fun onSuccess() = result.success(Unit)
             }
-        )
+        ) ?: result.success(Unit)
     }
     // endregion
 
@@ -593,6 +636,9 @@ class TerminalPlatformPlugin(
     // endregion
 
     // ======================== INTERNAL METHODS
+
+    private fun Boolean.toCustomerCancellation(): CustomerCancellation =
+        if (this) CustomerCancellation.ENABLE_IF_AVAILABLE else CustomerCancellation.DISABLE_IF_AVAILABLE
 
     private fun findActiveReader(serialNumber: String): Reader {
         val reader = discoveredReaders.firstOrNull { it.serialNumber == serialNumber }

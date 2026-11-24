@@ -27,7 +27,7 @@ fun PaymentIntent.toApi(): PaymentIntentApi {
         status = status!!.toApi(),
         amount = amount.toDouble(),
         captureMethod = when (captureMethod!!) {
-            "automatic" -> CaptureMethodApi.AUTOMATIC
+            "automatic", "automatic_async" -> CaptureMethodApi.AUTOMATIC
             "manual" -> CaptureMethodApi.MANUAL
             else ->
                 throw IllegalArgumentException(
@@ -80,6 +80,7 @@ fun PaymentIntentStatus.toApi(): PaymentIntentStatusApi {
         PaymentIntentStatus.REQUIRES_PAYMENT_METHOD -> PaymentIntentStatusApi.REQUIRES_PAYMENT_METHOD
         PaymentIntentStatus.SUCCEEDED -> PaymentIntentStatusApi.SUCCEEDED
         PaymentIntentStatus.REQUIRES_ACTION -> PaymentIntentStatusApi.REQUIRES_ACTION
+        PaymentIntentStatus.REQUIRES_REAUTHORIZATION -> PaymentIntentStatusApi.REQUIRES_REAUTHORIZATION
     }
 }
 

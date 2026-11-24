@@ -29,7 +29,7 @@ class DiscoveryDelegatePlugin: NSObject, DiscoveryDelegate {
     ) -> PlatformError? {
         self._cancel()
         
-        let configurationHost = try! configuration.toHost()
+        let configurationHost = try? configuration.toHost()
         guard let configurationHost else {
             return createApiException(
                 TerminalExceptionCodeApi.unknown,

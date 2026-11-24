@@ -5,7 +5,7 @@ extension Refund {
     func toApi() -> RefundApi {
         return RefundApi(
             amount: Int(amount),
-            chargeId: charge,
+            chargeId: chargeId ?? "",
             created: created,
             currency: currency,
             failureReason: failureReason,
@@ -30,7 +30,7 @@ extension RefundStatus {
         case .unknown:
             return nil
         @unknown default:
-            fatalError()
+            return nil
         }
     }
 }

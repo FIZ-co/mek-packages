@@ -58,7 +58,7 @@ extension LocationStatus {
         case .notSet:
             return .notSet
         @unknown default:
-            fatalError("WTF")
+            return nil
         }
     }
 }
@@ -73,13 +73,13 @@ extension ReaderNetworkStatus {
         case .unknown:
             return nil
         @unknown default:
-            fatalError("ReaderNetworkStatus \(self) not supported.")
+            return nil
         }
     }
 }
 
 extension DeviceType {
-    func toApi() -> DeviceTypeApi {
+    func toApi() -> DeviceTypeApi? {
         switch self {
         case .chipper1X:
             return .chipper1X
@@ -89,8 +89,6 @@ extension DeviceType {
             return .stripeM2
         case .tapToPay:
             return .tapToPay
-        case .verifoneP400:
-            return .verifoneP400
         case .wisePad3:
             return .wisePad3
         case .wisePosE:
@@ -119,8 +117,12 @@ extension DeviceType {
             return .verifoneUx700
         case .verifoneUX700DevKit:
             return .verifoneUx700Devkit
-        @unknown default:
-            fatalError("DeviceType \(self) not supported.")
+        case .stripeS710:
+            return .stripeS710
+        case .stripeS710DevKit:
+            return .stripeS710Devkit
+        default:
+            return nil
         }
     }
 }
@@ -187,7 +189,7 @@ extension BatteryStatus {
         case .unknown:
             return nil
         @unknown default:
-            fatalError("BatteryStatys \(self) not supported.")
+            return nil
         }
     }
 }
@@ -311,7 +313,7 @@ extension DeviceTypeApi {
         case .chipper2X:
             return .chipper2X
         case .verifoneP400:
-            return .verifoneP400
+            return nil
         case .wisePad3:
             return .wisePad3
         case .stripeM2:
@@ -387,8 +389,10 @@ extension ConnectionStatus {
             return .connecting
         case .connected:
             return .connected
+        case .reconnecting:
+            return .reconnecting
         @unknown default:
-            fatalError("WTF")
+            return .connecting
         }
     }
 }

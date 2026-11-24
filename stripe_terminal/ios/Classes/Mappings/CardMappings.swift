@@ -31,14 +31,14 @@ extension CardBrand {
             return .unionPay
         case .visa:
             return .visa
-        case .unknown:
+        case .unknown, .cartesBancaires, .girocard:
             return nil
         case .interac:
             return .interac
         case .eftposAu:
             return .eftposAu
         @unknown default:
-            fatalError("WTF")
+            return nil
         }
     }
 }
@@ -55,7 +55,7 @@ extension CardFundingType {
         case .other:
             return nil
         @unknown default:
-            fatalError("WTF")
+            return nil
         }
     }
 }
@@ -80,7 +80,7 @@ extension CardPresentDetails {
     }
 }
 
-extension SCPIncrementalAuthorizationStatus {
+extension IncrementalAuthorizationStatus {
     func toApi() -> IncrementalAuthorizationStatusApi? {
         switch self {
         case .unknown:
@@ -90,7 +90,7 @@ extension SCPIncrementalAuthorizationStatus {
         case .supported:
             return .supported
         @unknown default:
-            fatalError()
+            return nil
         }
     }
 }
@@ -98,7 +98,7 @@ extension SCPIncrementalAuthorizationStatus {
 extension SCPNetworks {
     func toApi() -> CardNetworksApi {
         return CardNetworksApi(
-            available: available?.map { CardBrand(rawValue: Int(truncating: $0))!.toApi()! } ?? [],
+            available: available?.compactMap { CardBrand(rawValue: Int(truncating: $0))?.toApi() } ?? [],
             preferred: nil
         )
     }

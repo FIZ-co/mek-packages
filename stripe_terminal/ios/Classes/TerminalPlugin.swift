@@ -24,7 +24,7 @@ public class TerminalPlugin: NSObject, FlutterPlugin, TerminalPlatformApi {
     }
     
     public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
-        if (Terminal.hasTokenProvider()) { self._clean() }
+        if (Terminal.isInitialized()) { self._clean() }
         
         self._discoverReadersController.removeHandler()
         removeTerminalPlatformApiHandler()
@@ -32,20 +32,27 @@ public class TerminalPlugin: NSObject, FlutterPlugin, TerminalPlatformApi {
     
     func onInit(_ shouldPrintLogs: Bool) async throws {
         // If a hot restart is performed in flutter the terminal is already initialized but we need to clean it up
-        if Terminal.hasTokenProvider() {
+        if Terminal.isInitialized() {
             _clean()
             return
         }
         
         let delegate = TerminalDelegatePlugin(handlers)
-        Terminal.setTokenProvider(delegate)
-        Terminal.shared.delegate = delegate
+        Terminal.initWithTokenProvider(delegate, delegate: delegate)
         if (shouldPrintLogs) { Terminal.setLogListener { message in print(message) } }
     }
     
-    func onClearCachedCredentials() throws {
-        Terminal.shared.clearCachedCredentials()
-        self._clean();
+    func onClearCachedCredentials() async throws {
+        // The sdk rejects the request while a reader is connected
+        if (Terminal.shared.connectedReader != nil) {
+            try? await Terminal.shared.disconnectReader()
+        }
+        do {
+            try Terminal.shared.clearCachedCredentials().get()
+        } catch let error as NSError {
+            throw error.toPlatformError()
+        }
+        await MainActor.run { self._clean() }
     }
 
 // MARK: - Reader discovery, connection and updates
@@ -206,13 +213,13 @@ public class TerminalPlugin: NSObject, FlutterPlugin, TerminalPlatformApi {
         _ allowRedisplay: AllowRedisplayApi
     ) throws {
         let paymentIntent = try _findPaymentIntent(paymentIntentId)
-        let config = CollectConfigurationBuilder()
+        let config = CollectPaymentIntentConfigurationBuilder()
             .setSurchargeNotice(surchargeNotice)
             .setRequestDynamicCurrencyConversion(requestDynamicCurrencyConversion)
             .setSkipTipping(skipTipping)
             .setTippingConfiguration(try tippingConfiguration?.toHost())
             .setUpdatePaymentIntent(shouldUpdatePaymentIntent)
-            .setEnableCustomerCancellation(customerCancellationEnabled)
+            .setCustomerCancellation(customerCancellationEnabled ? .enableIfAvailable : .disableIfAvailable)
             .setAllowRedisplay(allowRedisplay.toHost())
             
         self._cancelablesCollectPaymentMethod[operationId] = Terminal.shared.collectPaymentMethod(
@@ -313,8 +320,8 @@ public class TerminalPlugin: NSObject, FlutterPlugin, TerminalPlatformApi {
         _ customerCancellationEnabled: Bool
     ) throws {
         let setupIntent = try _findSetupIntent(setupIntentId)
-        let config = SetupIntentConfigurationBuilder()
-            .setEnableCustomerCancellation(customerCancellationEnabled)
+        let config = CollectSetupIntentConfigurationBuilder()
+            .setCustomerCancellation(customerCancellationEnabled ? .enableIfAvailable : .disableIfAvailable)
         
         _cancelablesCollectSetupIntentPaymentMethod[operationId] = Terminal.shared.collectSetupIntentPaymentMethod(
             setupIntent,
@@ -387,8 +394,8 @@ public class TerminalPlugin: NSObject, FlutterPlugin, TerminalPlatformApi {
         reverseTransfer.apply(params.setReverseTransfer)
         params.setMetadata(metadata)
         
-        let config = RefundConfigurationBuilder()
-            .setEnableCustomerCancellation(customerCancellationEnabled)
+        let config = CollectRefundConfigurationBuilder()
+            .setCustomerCancellation(customerCancellationEnabled ? .enableIfAvailable : .disableIfAvailable)
         
         _cancelablesCollectRefundPaymentMethod[operationId] = Terminal.shared.collectRefundPaymentMethod(
             try params.build(),

@@ -38,7 +38,6 @@ abstract class TerminalPlatform {
   @MethodApi(kotlin: MethodApiType.sync)
   Future<void> init({required bool shouldPrintLogs});
 
-  @MethodApi(kotlin: MethodApiType.sync, swift: MethodApiType.sync)
   Future<void> clearCachedCredentials();
 
 //region Reader discovery, connection and updates
@@ -46,7 +45,7 @@ abstract class TerminalPlatform {
   @MethodApi(kotlin: MethodApiType.sync, swift: MethodApiType.sync)
   Future<ConnectionStatus> getConnectionStatus();
 
-  @MethodApi(kotlin: MethodApiType.sync, swift: MethodApiType.sync)
+  @MethodApi(swift: MethodApiType.sync)
   Future<bool> supportsReadersOfType({
     required DeviceType? deviceType,
     required DiscoveryConfiguration discoveryConfiguration,
