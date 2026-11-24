@@ -304,8 +304,22 @@ extension NSError {
             return .collectInputsApplicationError
         case .tapToPayInternalNetworkError:
             return .internalNetworkError
-        @unknown default:
-            fatalError()
+        case .confirmInvalidSetupIntent:
+            return .confirmInvalidSetupIntent
+        case .unexpectedOperationError:
+            return .unexpectedOperation
+        case .tapToPayReaderRequestInterrupted:
+            return .readerNotAccessibleInBackground
+        case .readerConnectedToAnotherDevice:
+            return .readerConnectedToAnotherDevice
+        case .readerTampered:
+            return .readerTampered
+        case .cardNotSupported:
+            return .declinedByReader
+        case .surchargeNoticeNotAvailable:
+            return .surchargingNotAvailable
+        default:
+            return nil
         }
     }
 }

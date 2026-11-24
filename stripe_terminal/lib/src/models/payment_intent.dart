@@ -186,6 +186,9 @@ enum PaymentIntentStatus {
 
   /// The [PaymentIntent] succeeded.
   succeeded,
+
+  /// The capture window has lapsed and the [PaymentIntent] must be authorized again.
+  requiresReauthorization,
 }
 
 /// Contains details about items included in the [PaymentIntent] amount

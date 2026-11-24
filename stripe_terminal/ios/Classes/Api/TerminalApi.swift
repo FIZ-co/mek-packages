@@ -95,7 +95,7 @@ protocol TerminalPlatformApi {
         _ shouldPrintLogs: Bool
     ) async throws -> Void
 
-    func onClearCachedCredentials() throws -> Void
+    func onClearCachedCredentials() async throws -> Void
 
     func onGetConnectionStatus() throws -> ConnectionStatusApi
 
@@ -303,8 +303,10 @@ func setTerminalPlatformApiHandler(
                     return nil
                 }
             case "clearCachedCredentials":
-                let res = try hostApi.onClearCachedCredentials()
-                result(nil)
+                runAsync {
+                    try await hostApi.onClearCachedCredentials()
+                    return nil
+                }
             case "getConnectionStatus":
                 let res = try hostApi.onGetConnectionStatus()
                 result(res.rawValue)
@@ -911,6 +913,7 @@ enum ConnectionStatusApi: Int {
     case connected
     case connecting
     case discovering
+    case reconnecting
 }
 
 enum DeviceTypeApi: Int {
@@ -949,6 +952,7 @@ enum DisconnectReasonApi: Int {
     case usbDisconnected
     case idlePowerDown
     case bluetoothSignalLost
+    case bluetoothPeerRemovedPairingInformation
 }
 
 protocol DiscoveryConfigurationApi {}
@@ -1203,6 +1207,7 @@ enum PaymentIntentStatusApi: Int {
     case requiresPaymentMethod
     case requiresAction
     case succeeded
+    case requiresReauthorization
 }
 
 enum PaymentIntentUsageApi: Int {
@@ -1864,6 +1869,7 @@ enum TerminalExceptionCodeApi: Int {
     case surchargeNoticeRequiresUpdatePaymentIntent
     case surchargeUnavailableWithDynamicCurrencyConversion
     case tapToPayUnsupportedProcessor
+    case tapToPayPinUnavailable
 }
 
 struct TipApi {

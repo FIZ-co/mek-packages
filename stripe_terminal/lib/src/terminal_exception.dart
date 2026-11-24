@@ -585,6 +585,9 @@ enum TerminalExceptionCode {
 
   /// The SDK is running on a device with a non-ARM processor (usually x86).
   tapToPayUnsupportedProcessor,
+
+  /// The SDK was unable to load the secure PIN library.
+  tapToPayPinUnavailable,
   ;
 
   final String? message;

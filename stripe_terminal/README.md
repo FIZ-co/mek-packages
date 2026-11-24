@@ -4,8 +4,11 @@
 >
 > **Differences from upstream**:
 > - `ReceiptDetails.authorizationResponseCode` is nullable (Stripe Android SDK can return null; upstream Pigeon schema declared it non-null and crashed during `confirmPaymentIntent`). Upstream PR: [#147](https://github.com/BreX900/mek-packages/pull/147).
+> - Native SDKs 5.8 with the Dart API of 4.7.3 (`collectPaymentMethod` + `confirmPaymentIntent`) and CocoaPods. Upstream 5.7+ requires Flutter 3.44, supports only Swift Package Manager and replaces both calls with `processPaymentIntent`; upstream 5.6.0 is discontinued and does not work on iOS.
+> - `Terminal.supportsReadersOfType` runs off the main thread on Android.
+> - Error codes, card brands, card networks, device types and disconnect reasons unknown to the plugin do not crash the iOS side.
 >
-> **Sync workflow**: upstream is tracked as a remote and merged periodically. Trunk branch is `main`.
+> **Sync workflow**: upstream `main` can be merged again once the app is on Flutter 3.44 and Swift Package Manager. Until then fixes are ported by hand. Stripe Terminal iOS 6.0 is published only to Swift Package Manager and requires iOS 16. Trunk branch is `main`.
 
 A flutter plugin to scan stripe readers and connect to the them and get the payment methods.
 
@@ -20,8 +23,8 @@ more simply by supporting streams instead of callbacks for listeners
 
 All features of android and ios sdk are supported (Also the TapToPay feature)
 
-- [Android sdk](https://github.com/stripe/stripe-terminal-android) version: 4.7.3
-- [IOS sdk](https://github.com/stripe/stripe-terminal-ios) version: 4.7.3
+- [Android sdk](https://github.com/stripe/stripe-terminal-android) version: 5.8.2
+- [IOS sdk](https://github.com/stripe/stripe-terminal-ios) version: 5.8.0
 
 > Offline mode is not supported
 

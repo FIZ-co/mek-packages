@@ -70,8 +70,8 @@ android {
 }
 
 dependencies {
-    implementation "com.stripe:stripeterminal-taptopay:4.7.3"
-    implementation "com.stripe:stripeterminal-core:4.7.3"
+    implementation "com.stripe:stripeterminal-taptopay:5.8.2"
+    api "com.stripe:stripeterminal-core:5.8.2"
 }
 
 spotless {

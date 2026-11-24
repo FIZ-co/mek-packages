@@ -64,8 +64,10 @@ class Terminal {
   /// You can use this method to switch accounts in your app, e.g. to switch between live and test
   /// Stripe API keys on your backend.
   ///
+  /// A connected reader is disconnected first. Throws a [TerminalException] when the credentials could
+  /// not be cleared: the previous session is then still active.
+  ///
   /// In order to switch accounts in your app:
-  /// - if a reader is connected, call [disconnectReader]
   /// - call [clearCachedCredentials]
   /// - call [discoverReaders] and [connectReader] to connect to a reader. The [connectReader] call
   ///   will request a new connection token from your backend server.

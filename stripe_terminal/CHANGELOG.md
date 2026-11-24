@@ -1,4 +1,18 @@
 
+## 5.8.2+fiz.1
+- feat: bumped the Android sdk to `5.8.2` and the iOS sdk to `5.8.0` (the last iOS release on CocoaPods). The Dart API of `4.7.3` is kept.
+- feat: added `PaymentIntentStatus.requiresReauthorization`, `ConnectionStatus.reconnecting`, `DisconnectReason.bluetoothPeerRemovedPairingInformation` and `TerminalExceptionCode.tapToPayPinUnavailable`
+- fix: `Terminal.clearCachedCredentials` disconnects the connected reader first (the sdk 5.x rejects the request otherwise) and throws when the sdk could not clear the session
+- fix(ios): enum values unknown to the plugin no longer crash the app (error codes, card brands, device types, disconnect reasons)
+- fix: card networks unknown to the plugin (Cartes Bancaires, girocard) no longer crash on co-badged cards
+- fix(android): a null `ReceiptDetails.authorizationResponseCode` no longer crashes the payment callback
+- fix(android): `automatic_async` capture method is mapped to `CaptureMethod.automatic`
+- fix(android): `TapToPayUxConfigurationColorScheme.error` is no longer applied to the primary color
+- fix(android): cancelling an operation that has already finished completes instead of hanging
+- build(android): `stripeterminal-core` is exposed to the app, the app must not declare its own version
+- refactor(android): the off main thread `Terminal.supportsReadersOfType` moved out of the generated file
+- Android: Tap to Pay requires Android 13, and in production it is refused while developer options or USB debugging are on
+
 ## 4.7.3+fiz.1
 - fix: `ReceiptDetails.authorizationResponseCode` made nullable (Stripe Android SDK can return null) — Fizco fork only.
 

@@ -14,6 +14,8 @@ fun DisconnectReason.toApi(): DisconnectReasonApi {
         DisconnectReason.BLUETOOTH_DISABLED -> DisconnectReasonApi.BLUETOOTH_DISABLED
         DisconnectReason.USB_DISCONNECTED -> DisconnectReasonApi.USB_DISCONNECTED
         DisconnectReason.IDLE_POWER_DOWN -> DisconnectReasonApi.IDLE_POWER_DOWN
+        DisconnectReason.BLUETOOTH_PEER_REMOVED_PAIRING_INFORMATION ->
+            DisconnectReasonApi.BLUETOOTH_PEER_REMOVED_PAIRING_INFORMATION
         else -> DisconnectReasonApi.UNKNOWN
     }
 }
